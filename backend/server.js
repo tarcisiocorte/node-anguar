@@ -1,7 +1,10 @@
 var express = require('express');
 var cors = require('cors');
-var app = express();
 var bodyParser = require('body-parser');
+var mongoose = require('mongoose')
+var app = express();
+
+var User = require('./models/User.js')
 
 var posts =[
     {message: 'hello'},
@@ -16,9 +19,21 @@ app.get('/posts', (req, res) =>{
 })
 
 app.post('/register', (req, res) =>{
-    var userData = req.body;
-    console.log(userData.email)
-    res.sendStatus(200);
+    var userData = req.body
+    var user = new User(userData)
+    user.save((err, result) => {
+        if(err)
+            console.log('saving user error')
+
+        res.sendStatus(200)
+    }) 
 })
+
+//set the mongodb url 
+mongoose.connect("",  (err) =>{
+    if(!err)
+        console.log('connected to mongo')    
+})
+
 
 app.listen(3000)
