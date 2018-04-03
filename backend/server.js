@@ -1,67 +1,84 @@
-var express = require('express');
-var cors = require('cors');
-var bodyParser = require('body-parser');
+var express = require('express')
+var cors = require('cors')
+var bodyParser = require('body-parser')
 var mongoose = require('mongoose')
 var jwt = require('jwt-simple')
-var app = express();
+var app = express()
+var bcrypt = require('bcrypt-nodejs')
 
 var User = require('./models/User.js')
 
-var posts =[
+mongoose.Promise = Promise
+
+var posts = [
     {message: 'hello'},
     {message: 'hi'}
-]
-
-var unecessaryInformation = [
-    {info: 'information 1 - test'},
-    {info: 'information 2 - test 2'},    
 ]
 
 app.use(cors())
 app.use(bodyParser.json())
 
-app.get('/posts', (req, res) =>{
+app.get('/posts', (req,res) => {
     res.send(posts)
 })
 
-app.get('/information', (req, res) =>{
-    res.send(unecessaryInformation)
+app.get('/users', async (req,res) => {
+    try {
+        var users = await User.find({}, '-pwd -__v')
+        res.send(users)
+    } catch (error) {
+        console.error(error)
+        res.sendStatus(500)
+    }
 })
 
-app.post('/register', (req, res) =>{
+app.get('/profile/:id', async (req,res) => {
+    try {
+        var user = await User.findById(req.params.id, '-pwd -__v')
+        res.send(user)
+    } catch (error) {
+        console.error(error)
+        res.sendStatus(500)
+    }
+})
+
+
+app.post('/register', (req,res) => {
     var userData = req.body
+
     var user = new User(userData)
 
-    console.log(userData.pwd + " | " + userData.email)
     user.save((err, result) => {
         if(err)
             console.log('saving user error')
 
         res.sendStatus(200)
-    }) 
+    })
 })
 
-app.post('/login', async(req, res) =>{
-    var userData = req.body;
-    var user = await User.findOne({email: userData.email})
+app.post('/login', async (req,res) => {
+    var loginData = req.body
+
+    var user = await User.findOne({email: loginData.email})
+
     if(!user)
-        return res.status(401).send({message: 'Email or Password invalid'});
+        return res.status(401).send({message: 'Email or Password invalid'})
 
-    if(userData.pwd != user.pwd)
-        return res.status(401).send({message: 'Email or Passowrd invalid'});
+    bcrypt.compare(loginData.pwd, user.pwd, (err, isMatch) => {
+        if(!isMatch)
+            return res.status(401).send({message: 'Email or Password invalid'})
 
+        var payload = {}
 
-    var payload = {}        
-    var token = jwt.encode(payload, '123')
-    
-    res.status(200).send({token});
+        var token = jwt.encode(payload, '123')
+
+        res.status(200).send({token})
+    })
 })
 
-//set the mongodb url 
-mongoose.connect("mongodb://tarcisio:1234@ds259778.mlab.com:59778/node-angular",  (err) =>{
+mongoose.connect('mongodb://tarcisio:1234@ds259778.mlab.com:59778/node-angular', { useMongoClient: true }, (err) => {
     if(!err)
-        console.log('connected to mongo')    
+        console.log('connected to mongo')
 })
-
 
 app.listen(3000)
