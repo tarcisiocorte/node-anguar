@@ -2,24 +2,37 @@ var express = require('express')
 var cors = require('cors')
 var bodyParser = require('body-parser')
 var mongoose = require('mongoose')
-var jwt = require('jwt-simple')
 var app = express()
-var bcrypt = require('bcrypt-nodejs')
 
 var User = require('./models/User.js')
+var Post = require('./models/Post.js')
+var auth = require('./auth.js')
 
 mongoose.Promise = Promise
-
-var posts = [
-    {message: 'hello'},
-    {message: 'hi'}
-]
 
 app.use(cors())
 app.use(bodyParser.json())
 
-app.get('/posts', (req,res) => {
+app.get('/posts/:id', async (req,res) => {
+    var author = req.params.id
+    var posts = await Post.find({author})
     res.send(posts)
+})
+
+app.post('/post', (req,res) => {
+    var postData = req.body
+    postData.author = '5ad9cc34f4aa4108e88ee047'
+
+    var post = new Post(postData)
+
+    post.save((err, result) => {
+        if (err) {
+            console.error('saving post error')
+            return res.status(500).send({message: 'saving post error'})
+        }
+
+        res.sendStatus(200)
+    })
 })
 
 app.get('/users', async (req,res) => {
@@ -42,43 +55,10 @@ app.get('/profile/:id', async (req,res) => {
     }
 })
 
-
-app.post('/register', (req,res) => {
-    var userData = req.body
-
-    var user = new User(userData)
-
-    user.save((err, result) => {
-        if(err)
-            console.log('saving user error')
-
-        res.sendStatus(200)
-    })
-})
-
-app.post('/login', async (req,res) => {
-    var loginData = req.body
-
-    var user = await User.findOne({email: loginData.email})
-
-    if(!user)
-        return res.status(401).send({message: 'Email or Password invalid'})
-
-    bcrypt.compare(loginData.pwd, user.pwd, (err, isMatch) => {
-        if(!isMatch)
-            return res.status(401).send({message: 'Email or Password invalid'})
-
-        var payload = {}
-
-        var token = jwt.encode(payload, '123')
-
-        res.status(200).send({token})
-    })
-})
-
-mongoose.connect('mongodb://tarcisio:1234@ds259778.mlab.com:59778/node-angular', { useMongoClient: true }, (err) => {
+mongoose.connect('', { useMongoClient: true }, (err) => {
     if(!err)
         console.log('connected to mongo')
 })
 
+app.use('/auth', auth)
 app.listen(3000)
